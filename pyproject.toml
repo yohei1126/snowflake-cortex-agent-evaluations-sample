@@ -1,0 +1,24 @@
+[project]
+name = "snowflake-cortex-agent-evaluations-sample"
+version = "0.1.0"
+description = "Agent Evaluation for Snowflake Cortex Agent with Cortex Analyst"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # TruLens evaluation framework
+    # trulens-core includes TruCustomApp and the @instrument decorator
+    "trulens-core>=1.0",
+    "trulens-providers-cortex>=1.0",
+    "trulens-dashboard>=1.0",
+    # Snowflake SDK (Snowpark for TruLens Cortex provider)
+    "snowflake-snowpark-python>=1.21",
+    # Agent API client
+    "requests>=2.32.3",
+    "sseclient-py>=1.8.0",
+    "urllib3>=2.1.0,<3.0.0",
+    # Utilities
+    "numpy>=1.25",
+    "cryptography>=42.0",
+    "python-dotenv>=1.0",
+    "snowflake-connector-python[secure-local-storage]>=3.18.0",
+]
