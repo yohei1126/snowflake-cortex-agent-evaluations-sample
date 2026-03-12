@@ -204,6 +204,12 @@ def _extract_context_from_tool_result(tool_result: dict) -> list[str]:
     chunks: list[str] = []
     tool_name = tool_result.get("name", "")
 
+    # data_to_chart renders charts from existing SQL results; its output contains
+    # chart config / image data, not queryable facts.  Exclude it so that chart
+    # artefacts do not pollute the context chunks used for groundedness scoring.
+    if tool_name == "data_to_chart":
+        return chunks
+
     for item in tool_result.get("content", []):
         if not isinstance(item, dict):
             continue

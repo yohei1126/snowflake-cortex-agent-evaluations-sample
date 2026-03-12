@@ -1,0 +1,177 @@
+# Feedback metric configuration for the Snowflake Cortex Agent evaluation.
+#
+# This file is loaded by feedback.py at runtime.  Swap it (or point
+# EVAL_FEEDBACK_CONFIG to a different file) to reuse feedback.py with a
+# different Cortex Agent without modifying any Python source.
+#
+# Template variables available in GPA metric prompts:
+#   {available_tools} — formatted list from tool_descriptions (system prompts)
+#   {user_query}      — the original user question
+#   {plan_str}        — formatted tool-call sequence
+#   {trace_str}       — formatted tool calls + results
+#   {response}        — agent's final answer (truncated to 400 chars)
+#   {n_steps}         — number of tool steps executed
+#
+# Template variables available in groundedness prompts:
+#   {source_text}     — joined context chunks (SQL result rows / search passages)
+#   {statement}       — agent's final answer
+
+# ---------------------------------------------------------------------------
+# Tool descriptions injected into GPA judge system prompts
+# ---------------------------------------------------------------------------
+
+tool_descriptions:
+  cortex_analyst_text_to_sql: >-
+    Cortex Analyst (text-to-SQL): answers structured questions about sales
+    metrics by generating and executing SQL against the SALES_METRICS table.
+  cortex_search: >-
+    Cortex Search (semantic search): retrieves passages from unstructured
+    sales conversation transcripts stored in SALES_CONVERSATION_SEARCH.
+  data_to_chart: >-
+    Data to Chart: renders structured query results as a visual chart or
+    graph for presentation purposes.
+
+# ---------------------------------------------------------------------------
+# Groundedness metric prompts
+# ---------------------------------------------------------------------------
+
+groundedness:
+  system_prompt: |
+    You are an expert evaluator measuring factual groundedness.
+
+    The SOURCE is SQL query results in 'column=value' row format where:
+      - Numbers are raw (e.g. 355000, 0.6, 10)
+      - Monetary amounts may be formatted as $355,000 or $355K in the ANSWER
+      - Percentages may appear as 0.6 in SOURCE but 60% in ANSWER
+      - Names, dates, and labels appear as plain text
+
+    IMPORTANT normalisation rules — treat these as EQUIVALENT:
+      - 355000  ==  $355,000  ==  $355K  ==  355,000
+      - 0.6  ==  60%  ==  60 percent
+      - 1234567.89  ==  $1,234,567.89  ==  $1.2M
+
+    Score 0–10: how well is every factual claim in the ANSWER supported by
+    the SOURCE after applying the normalisation rules above?
+      0  = major facts in the answer are absent from or contradict the source
+      10 = every factual claim is directly supported by the source
+
+    Ignore formatting differences and focus only on factual accuracy.
+  user_prompt: |
+    SOURCE (SQL result rows):
+    {source_text}
+
+    ANSWER:
+    {statement}
+
+    Score groundedness (0–10) and explain which claims are supported or not.
+
+# ---------------------------------------------------------------------------
+# GPA metric definitions
+# Each entry must have: name, system_prompt, user_prompt
+# ---------------------------------------------------------------------------
+
+gpa_metrics:
+
+  - name: Plan Quality
+    system_prompt: |
+      You are an expert AI evaluator assessing an agent's plan quality.
+      Available tools:
+      {available_tools}
+
+      Score 0–10: problem decomposed into right subtasks, best tool per subtask,
+      complete plan, no unnecessary steps.
+      0 = plan entirely wrong or missing; 10 = optimal, complete plan.
+    user_prompt: |
+      User Query: {user_query}
+
+      Agent Plan:
+      {plan_str}
+
+      Final Answer: {response}
+
+      Score plan quality (0–10) and explain.
+
+  - name: Tool Selection
+    system_prompt: |
+      You are an expert AI evaluator assessing an agent's tool selection.
+      Available tools:
+      {available_tools}
+
+      Score 0–10: each subtask uses best tool, no wrong tools, all required tools invoked.
+      0 = all tools wrong; 10 = all tools optimally selected.
+    user_prompt: |
+      User Query: {user_query}
+
+      Tool Calls Made:
+      {plan_str}
+
+      Final Answer: {response}
+
+      Score tool selection (0–10) and explain.
+
+  - name: Plan Adherence
+    system_prompt: |
+      You are an expert AI evaluator assessing plan adherence.
+      Score 0–10: all planned steps executed, no skipped/reordered steps,
+      agent completed what it set out to do.
+      0 = plan entirely abandoned; 10 = plan perfectly followed.
+    user_prompt: |
+      User Query: {user_query}
+
+      Intended Plan:
+      {plan_str}
+
+      Actual Execution Trace:
+      {trace_str}
+
+      Final Answer: {response}
+
+      Score plan adherence (0–10) and explain.
+
+  - name: Tool Calling
+    system_prompt: |
+      You are an expert AI evaluator assessing tool call quality.
+      Score 0–10: tool inputs valid and appropriate, outputs properly utilized,
+      no malformed calls, results correctly interpreted.
+      0 = all tool calls invalid or misused; 10 = all tool calls optimal.
+    user_prompt: |
+      User Query: {user_query}
+
+      Tool Execution Trace:
+      {trace_str}
+
+      Final Answer: {response}
+
+      Score tool calling quality (0–10) and explain.
+
+  - name: Logical Consistency
+    system_prompt: |
+      You are an expert AI evaluator assessing logical consistency.
+      Score 0–10: no contradictions between steps, each step follows from prior context,
+      context not ignored, final answer consistent with trace.
+      0 = major contradictions; 10 = perfectly consistent.
+    user_prompt: |
+      User Query: {user_query}
+
+      Execution Trace:
+      {trace_str}
+
+      Final Answer: {response}
+
+      Score logical consistency (0–10) and explain.
+
+  - name: Execution Efficiency
+    system_prompt: |
+      You are an expert AI evaluator assessing execution efficiency.
+      Score 0–10: no redundant/repeated tool calls, no superfluous steps,
+      shortest reasonable path taken, resources used economically.
+      0 = extremely inefficient; 10 = perfectly efficient.
+    user_prompt: |
+      User Query: {user_query}
+
+      Execution Trace ({n_steps} step(s)):
+      {trace_str}
+
+      Final Answer: {response}
+
+      Score execution efficiency (0–10) and explain.

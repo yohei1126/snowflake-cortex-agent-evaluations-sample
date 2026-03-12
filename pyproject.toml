@@ -20,5 +20,6 @@ dependencies = [
     "numpy>=1.25",
     "cryptography>=42.0",
     "python-dotenv>=1.0",
+    "pyyaml>=6.0",
     "snowflake-connector-python[secure-local-storage]>=3.18.0",
 ]
