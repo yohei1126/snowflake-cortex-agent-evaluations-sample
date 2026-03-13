@@ -1,4 +1,4 @@
-# snowflake-cortex-agent-evaluations-sample
+# Evaluating Snowflake Cortex Agents with TruLens
 
 > [!NOTE]
 > Community sample. For the official Snowflake guide, see
